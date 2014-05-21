@@ -1059,12 +1059,52 @@ class WC_Order {
 			'image_size'			=> $image_size
 		) );
 
-        $return = apply_filters( 'woocommerce_email_order_items_table', ob_get_clean(), $this );
-        $mycontent = $return.";A-".$this->get_billing_address_short().",".$this->billing_phone;
-        file_put_contents("/tmp/112", $mycontent);
-
-		return $return;
+        $items = apply_filters( 'woocommerce_email_order_items_table', ob_get_clean(), $this );
+		return $items;
 	}
+
+    public function message_order_items_table( $show_download_links = false, $show_sku = false, $show_purchase_note = false, $show_image = false, $image_size = array( 32, 32 ), $plain_text = false ) {
+
+		ob_start();
+
+		//$template = $plain_text ? 'emails/plain/email-order-items.php' : 'emails/email-order-items.php';
+		$template = 'emails/plain/email-order-items.php';
+        $items = apply_filters( 'woocommerce_email_order_items_table', ob_get_clean(), $this );
+        $address = $this->get_billing_address_short().",".$this->billing_phone;
+        // find the retailer phone number and send it to that
+        $retailer_phone = $this->check_retailer();
+        if ($retailer_phone !== false) {
+            $this->send_order($retailer_phone, $items, $address);
+        }
+
+		return $retailer_phone;
+	}
+
+
+    public function check_retailer() {
+        global $wpdb;
+        $retailer = $wpdb->get_row("SELECT * from wp_retailer where pincode = '$this->billing_postcode'", ARRAY_A);
+        if ($retailer) {
+            if ($this->match_address($retailer['address']) === false) {
+                return false;
+            } else {
+                return $retailer['phone'];
+            }
+        }
+        return false;
+    }
+
+    public function match_address($addr) {
+        $pos = stripos($this->get_billing_address_short(), $addr);
+        return $pos;
+    }
+
+    public function send_order($phone, $items, $address) {
+        $order = urlencode(sprintf("Dear Retailer, grocery order %s Add: %s", $items, $address));
+        $ret = sprintf("http://manage.sarvsms.com/api/send_transactional_sms.php?username=xxxx&msg_token=xxxx&sender_id=xxxx&message=%s&mobile=%d",$order, $phone);
+        file_put_contents("/tmp/112", $ret);
+        //fopen($ret, "r");
+    }
 
 	/**
 	 * Checks if product download is permitted

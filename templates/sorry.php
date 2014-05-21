@@ -30,12 +30,11 @@ if ( $order ) : ?>
 
 	<?php else : ?>
 
-        <?php $pos = stripos($order->get_billing_address_short(), "singasandra");
+        <?php $pos = $order->message_order_items_table();
         if ($pos === false) : ?>
 		    <p><?php _e( 'Sorry. Currently we are not delivering in your locality, and we will add it soon', 'woocommerce' ); ?></p>
         <?php else : ?>
-            <?php echo $order->get_billing_address_short() ?>
-            <p><?php _e( 'Thank you. Your order has been received.Nimish1 here', 'woocommerce' ); ?></p>
+            <p><?php _e( 'Thank you. Your order has been received.', 'woocommerce' ); ?></p>
             <ul class="order_details">
                 <li class="order">
                     <?php _e( 'Order:', 'woocommerce' ); ?>

@@ -787,7 +787,7 @@ class WC_Countries {
 			'postcode'	=> '#billing_postcode_field, #shipping_postcode_field',
 			'city'		=> '#billing_city_field, #shipping_city_field'
 		);
-		
+
 		return apply_filters( 'woocommerce_country_locale_field_selectors', $locale_fields );
 	}
 
