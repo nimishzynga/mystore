@@ -10,6 +10,9 @@
  * @category	Class
  * @author 		WooThemes
  */
+
+define("SMS_SIZE", 60);
+
 class WC_Order {
 
 	/** @public int Order (post) ID */
@@ -1067,18 +1070,37 @@ class WC_Order {
 
 		ob_start();
 
-		//$template = $plain_text ? 'emails/plain/email-order-items.php' : 'emails/email-order-items.php';
-		$template = 'emails/plain/email-order-items.php';
-        $items = apply_filters( 'woocommerce_email_order_items_table', ob_get_clean(), $this );
-        $address = $this->get_billing_address_short().",".$this->billing_phone;
-        // find the retailer phone number and send it to that
+        $extra_len = strlen("Dear Retailer, grocery order");
+        $send_item = "";
+        $send_item_len = 0;
         $retailer_phone = $this->check_retailer();
         if ($retailer_phone !== false) {
-            $this->send_order($retailer_phone, $items, $address);
+            foreach ($this->get_items() as $item1) {
+                $item = $item1["name"];
+                $item_len = strlen($item);
+                if ($item_len + $send_item_len + $extra_len > SMS_SIZE) {
+                    $this->send_order($retailer_phone, $send_item, false);
+                    $send_item = $item;
+                    $send_item_len = 0;
+                } else {
+                    if (strlen($send_item) > 0) {
+                        $send_item = $send_item.",".$item;
+                    } else {
+                        $send_item = $item;
+                    }
+                    $send_item_len += $item_len;
+                }
+            }
+            $address = $this->get_billing_address_short().",".$this->billing_phone;
+            if ($send_item_len + strlen($address) + $extra_len > SMS_SIZE) {
+                $this->send_order($retailer_phone, $send_item, false);
+                $send_item = "";
+            }
+            $this->send_order($retailer_phone, $send_item, $address);
+        } else {
+            return false;
         }
-
-		return $retailer_phone;
-	}
+    }
 
 
     public function check_retailer() {
@@ -1100,9 +1122,14 @@ class WC_Order {
     }
 
     public function send_order($phone, $items, $address) {
-        $order = urlencode(sprintf("Dear Retailer, grocery order %s Add: %s", $items, $address));
-        $ret = sprintf("http://manage.sarvsms.com/api/send_transactional_sms.php?username=xxxx&msg_token=xxxx&sender_id=xxxx&message=%s&mobile=%d",$order, $phone);
-        file_put_contents("/tmp/112", $ret);
+        $order = "";
+        if ($address === false) {
+            $order = urlencode(sprintf("Dear Retailer, grocery order %s id %d", $items, $this->id));
+        } else {
+            $order = urlencode(sprintf("Dear Retailer, grocery order %s id %d Add %s", $items, $this->id, $address));
+        }
+        $ret = sprintf("http://manage.sarvsms.com/api/send_transactional_sms.php?username=xxxx&msg_token=xxxx&sender_id=xxxx&message=%s&mobile=%d\n",$order, $phone);
+        file_put_contents("/tmp/113", $ret, FILE_APPEND);
         //fopen($ret, "r");
     }
 
